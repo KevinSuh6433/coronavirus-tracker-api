@@ -1,23 +1,41 @@
 """app.location"""
+from datetime import time
 from ..coordinates import Coordinates
 from ..utils import countries
 from ..utils.populations import country_population
+from abc import ABCMeta, abstractmethod
+import copy
 
+
+class IProtoType(metaclass=ABCMeta):
+    "interface with clone method"
+    @staticmethod
+    @abstractmethod
+    def clone():
+        """The clone, deep or shallow.
+        It is up to you how you want to implement
+        the details in your concrete class"""
 
 # pylint: disable=redefined-builtin,invalid-name
-class Location:  # pylint: disable=too-many-instance-attributes
+
+
+class Location(IProtoType):  # pylint: disable=too-many-instance-attributes
     """
     A location in the world affected by the coronavirus.
     """
 
     def __init__(
-        self, id, country, province, coordinates, last_updated, confirmed, deaths, recovered,
+        self, id, country, province, state, county, coordinates, last_updated, confirmed, deaths, recovered, timelines
     ):  # pylint: disable=too-many-arguments
         # General info.
         self.id = id
         self.country = country.strip()
         self.province = province.strip()
         self.coordinates = coordinates
+        
+        # Set state and county (csbsLocation)
+        self.state = state
+        self.county = county
 
         # Last update.
         self.last_updated = last_updated
@@ -26,6 +44,26 @@ class Location:  # pylint: disable=too-many-instance-attributes
         self.confirmed = confirmed
         self.deaths = deaths
         self.recovered = recovered
+
+        # Set timelines (timelinedLocation)
+        self.timelines = timelines
+
+    def clone(self):
+        " This clone method uses a shallow copy technique "
+        return type(self)(
+            copy.deepcopy(self.id),
+            copy.deepcopy(self.country),
+            copy.deepcopy(self.province),
+            copy.deepcopy(self.coordinates),
+
+            # Last update.
+            copy.deepcopy(self.last_updated),
+
+            # Statistics.
+            copy.deepcopy(self.confirmed),
+            copy.deepcopy(self.deaths),
+            copy.deepcopy(self.recovered)
+        )
 
     @property
     def country_code(self):
@@ -71,54 +109,25 @@ class Location:  # pylint: disable=too-many-instance-attributes
                 "deaths": self.deaths,
                 "recovered": self.recovered,
             },
+
+            # for timelinedLocation
+            "timelines": {
+                # Serialize all the timelines.
+                key: value.serialize()
+                for (key, value) in self.timelines.items()
+            },
+
+            # for csbsLocation and nycLocation
+            "state": self.state,
+            "county": self.county,
         }
 
 
-class TimelinedLocation(Location):
-    """
-    A location with timelines.
-    """
+location = Location()
+timelinedLocation = location.clone()
+timelinedLocation.confirmed = timelinedLocation.timelines.get("confirmed").latest
+timelinedLocation.deaths = timelinedLocation.timelines.get("deaths").latest
+timelinedLocation.recovered = timelinedLocation.timelines.get("recovered").latest
 
-    # pylint: disable=too-many-arguments
-    def __init__(self, id, country, province, coordinates, last_updated, timelines):
-        super().__init__(
-            # General info.
-            id,
-            country,
-            province,
-            coordinates,
-            last_updated,
-            # Statistics (retrieve latest from timelines).
-            confirmed=timelines.get("confirmed").latest or 0,
-            deaths=timelines.get("deaths").latest or 0,
-            recovered=timelines.get("recovered").latest or 0,
-        )
-
-        # Set timelines.
-        self.timelines = timelines
-
-    # pylint: disable=arguments-differ
-    def serialize(self, timelines=False):
-        """
-        Serializes the location into a dict.
-
-        :param timelines: Whether to include the timelines.
-        :returns: The serialized location.
-        :rtype: dict
-        """
-        serialized = super().serialize()
-
-        # Whether to include the timelines or not.
-        if timelines:
-            serialized.update(
-                {
-                    "timelines": {
-                        # Serialize all the timelines.
-                        key: value.serialize()
-                        for (key, value) in self.timelines.items()
-                    }
-                }
-            )
-
-        # Return the serialized location.
-        return serialized
+csbsLocation = location.clone()
+nycLocation = location.clone()
