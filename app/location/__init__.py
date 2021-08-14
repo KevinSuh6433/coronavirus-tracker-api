@@ -25,13 +25,17 @@ class Location(IProtoType):  # pylint: disable=too-many-instance-attributes
     """
 
     def __init__(
-        self, id, country, province, coordinates, last_updated, confirmed, deaths, recovered, timelines
+        self, id, country, province, state, county, coordinates, last_updated, confirmed, deaths, recovered, timelines
     ):  # pylint: disable=too-many-arguments
         # General info.
         self.id = id
         self.country = country.strip()
         self.province = province.strip()
         self.coordinates = coordinates
+        
+        # Set state and county (csbsLocation)
+        self.state = state
+        self.county = county
 
         # Last update.
         self.last_updated = last_updated
@@ -41,7 +45,7 @@ class Location(IProtoType):  # pylint: disable=too-many-instance-attributes
         self.deaths = deaths
         self.recovered = recovered
 
-        # Set timelines.
+        # Set timelines (timelinedLocation)
         self.timelines = timelines
 
     def clone(self):
@@ -105,11 +109,17 @@ class Location(IProtoType):  # pylint: disable=too-many-instance-attributes
                 "deaths": self.deaths,
                 "recovered": self.recovered,
             },
+
+            # for timelinedLocation
             "timelines": {
                 # Serialize all the timelines.
                 key: value.serialize()
                 for (key, value) in self.timelines.items()
             },
+
+            # for csbsLocation
+            "state": self.state,
+            "county": self.county,
         }
 
 
@@ -118,3 +128,5 @@ timelinedLocation = location.clone()
 timelinedLocation.confirmed = timelinedLocation.timelines.get("confirmed").latest
 timelinedLocation.deaths = timelinedLocation.timelines.get("deaths").latest
 timelinedLocation.recovered = timelinedLocation.timelines.get("recovered").latest
+
+csbsLocation = location.clone()
