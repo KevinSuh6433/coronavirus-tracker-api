@@ -117,7 +117,7 @@ class Location(IProtoType):  # pylint: disable=too-many-instance-attributes
                 for (key, value) in self.timelines.items()
             },
 
-            # for csbsLocation
+            # for csbsLocation and nycLocation
             "state": self.state,
             "county": self.county,
         }
@@ -130,3 +130,4 @@ timelinedLocation.deaths = timelinedLocation.timelines.get("deaths").latest
 timelinedLocation.recovered = timelinedLocation.timelines.get("recovered").latest
 
 csbsLocation = location.clone()
+nycLocation = location.clone()
